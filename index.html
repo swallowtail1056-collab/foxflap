@@ -26,12 +26,18 @@
   }
   #scoreBoard {
     display: flex;
-    gap: 32px;
+    align-items: center;
+    justify-content: space-between;
+    width: 360px;
     color: #ffd97d;
     font-size: 14px;
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
+  }
+  #scoreLeft {
+    display: flex;
+    gap: 24px;
   }
   #scoreBoard span { color: #fff; font-size: 20px; }
   #canvas {
@@ -45,13 +51,39 @@
     font-size: 13px;
     letter-spacing: 0.5px;
   }
+  #langBar {
+    display: flex;
+    gap: 6px;
+  }
+  .langBtn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,215,120,0.4);
+    color: rgba(255,215,120,0.7);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .langBtn.active {
+    background: rgba(255,215,120,0.3);
+    color: #ffd97d;
+    border-color: #ffd97d;
+  }
 </style>
 </head>
 <body>
 <div id="gameWrapper">
   <div id="scoreBoard">
-    スコア <span id="score">0</span>
-    &nbsp;&nbsp;最高 <span id="best">0</span>
+    <div id="scoreLeft">
+      <span><span id="labelScore">スコア</span> <span id="score">0</span></span>
+      <span><span id="labelBest">最高</span> <span id="best">0</span></span>
+    </div>
+    <div id="langBar">
+      <button class="langBtn active" id="btnJa" onclick="setLang('ja')">🇯🇵</button>
+      <button class="langBtn" id="btnEn" onclick="setLang('en')">🇬🇧</button>
+    </div>
   </div>
   <canvas id="canvas" width="360" height="560"></canvas>
   <div id="hint">クリック / スペース / タップ でジャンプ</div>
@@ -68,6 +100,48 @@ const SKY_BOT    = '#c8e8f0';
 const GROUND_COL = '#6b3d1e';
 const GRASS_COL  = '#3a7d2c';
 
+// ── Language ─────────────────────────────────────
+let LANG = 'ja';
+const T = {
+  ja: {
+    score: 'スコア', best: '最高',
+    hint: 'クリック / スペース / タップ でジャンプ',
+    title: 'Foxy Flap 🦊',
+    start: 'タップしてスタート！',
+    startSub: 'Click / Space / Tap',
+    dead: '💥 やられた！',
+    newRecord: '🎉 新記録！',
+    retry: 'タップして もう一度',
+  },
+  en: {
+    score: 'Score', best: 'Best',
+    hint: 'Click / Space / Tap to jump',
+    title: 'Foxy Flap 🦊',
+    start: 'Tap to Start!',
+    startSub: 'Click / Space / Tap',
+    dead: '💥 Game Over!',
+    newRecord: '🎉 New Record!',
+    retry: 'Tap to Play Again',
+  }
+};
+function setLang(lang) {
+  LANG = lang;
+  document.getElementById('btnJa').classList.toggle('active', lang === 'ja');
+  document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+  document.getElementById('labelScore').textContent = T[lang].score;
+  document.getElementById('labelBest').textContent = T[lang].best;
+  document.getElementById('hint').textContent = T[lang].hint;
+  // Force canvas overlay redraw for idle/dead states
+  if (state === 'idle' || state === 'dead') {
+    drawBg();
+    for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
+    drawFox(fox.x, fox.y, fox.vy);
+    if (state === 'idle') drawIdle();
+    if (state === 'dead') drawDead();
+  }
+}
+function t(key) { return T[LANG][key]; }
+
 // ── State ─────────────────────────────────────────
 let state = 'idle'; // idle | playing | dead
 let score = 0, best = 0;
@@ -80,10 +154,10 @@ const JUMP_V   = -7;
 // Pipes
 let pipes = [];
 const PIPE_W    = 48;
-const PIPE_GAP  = 190;
-const PIPE_SPD  = 2.0;
+const PIPE_GAP  = 230;
+const PIPE_SPD  = 1.6;
 let pipeTimer   = 0;
-const PIPE_INT  = 115;  // frames between pipes
+const PIPE_INT  = 135;  // frames between pipes
 
 // Ground
 const GROUND_H  = 60;
@@ -263,8 +337,9 @@ function drawFox(x, y, vy) {
 
 // ── Obstacle drawing (trees + brick walls) ────────
 // Each pipe alternates: even index = tree, odd index = brick wall
-function drawPipe(px, topH, idx) {
-  const botY = topH + PIPE_GAP;
+function drawPipe(px, topH, idx, gap) {
+  gap = gap || PIPE_GAP;
+  const botY = topH + gap;
   const type = idx % 2 === 0 ? 'tree' : 'brick';
 
   if (type === 'tree') {
@@ -405,8 +480,8 @@ function drawIdle() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '16px "Segoe UI", sans-serif';
-  ctx.fillText('タップしてスタート！', W/2, H/2 + 16);
-  ctx.fillText('Click / Space / Tap', W/2, H/2 + 38);
+  ctx.fillText(t('start'), W/2, H/2 + 16);
+  ctx.fillText(t('startSub'), W/2, H/2 + 38);
 }
 
 function drawDead() {
@@ -418,25 +493,25 @@ function drawDead() {
   ctx.fillStyle = '#ff6b6b';
   ctx.font = 'bold 30px "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('💥 やられた！', W/2, H/2 - 45);
+  ctx.fillText(t('dead'), W/2, H/2 - 45);
 
   ctx.fillStyle = '#ffd97d';
   ctx.font = 'bold 22px "Segoe UI", sans-serif';
-  ctx.fillText(`スコア: ${score}`, W/2, H/2 - 8);
+  ctx.fillText(`${t('score')}: ${score}`, W/2, H/2 - 8);
 
   if (score >= best) {
     ctx.fillStyle = '#a8e063';
     ctx.font = 'bold 15px "Segoe UI", sans-serif';
-    ctx.fillText('🎉 新記録！', W/2, H/2 + 18);
+    ctx.fillText(t('newRecord'), W/2, H/2 + 18);
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '15px "Segoe UI", sans-serif';
-    ctx.fillText(`最高: ${best}`, W/2, H/2 + 18);
+    ctx.fillText(`${t('best')}: ${best}`, W/2, H/2 + 18);
   }
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '15px "Segoe UI", sans-serif';
-  ctx.fillText('タップして もう一度', W/2, H/2 + 50);
+  ctx.fillText(t('retry'), W/2, H/2 + 50);
 }
 
 function drawScore() {
@@ -455,7 +530,7 @@ function collides() {
   if (fy + fr >= GY || fy - fr <= 0) return true;
   for (const p of pipes) {
     if (fx + fr > p.x && fx - fr < p.x + PIPE_W) {
-      if (fy - fr < p.top || fy + fr > p.top + PIPE_GAP) return true;
+      if (fy - fr < p.top || fy + fr > p.top + (p.gap || PIPE_GAP)) return true;
     }
   }
   return false;
@@ -481,16 +556,21 @@ function loop() {
     fox.vy += GRAVITY;
     fox.y  += fox.vy;
 
-    // Pipes
+    // Pipes (難易度：最初5本はゆっくり、その後徐々に加速)
+    const pipeCount = pipes.length + pipes.filter(p => p.scored).length;
+    const pipeTotal = pipes.length;
+    const dynInterval = pipeTotal < 1 ? 160 : score < 3 ? 190 : score < 5 ? 170 : score < 8 ? 150 : PIPE_INT;
+    const dynGap = pipeTotal < 1 ? 250 : score < 3 ? 270 : score < 5 ? 255 : score < 8 ? 240 : PIPE_GAP;
+    const dynSpd = pipeTotal < 1 ? 1.3 : score < 3 ? 1.2 : score < 5 ? 1.4 : score < 8 ? 1.5 : PIPE_SPD;
     pipeTimer++;
-    if (pipeTimer >= PIPE_INT) {
+    if (pipeTimer >= dynInterval) {
       pipeTimer = 0;
-      const top = 80 + Math.random() * (GY - PIPE_GAP - 120);
-      pipes.push({ x: W + 10, top, scored: false, idx: pipes.length });
+      const top = 80 + Math.random() * (GY - dynGap - 120);
+      pipes.push({ x: W + 10, top, scored: false, idx: pipes.length, gap: dynGap });
     }
     pipes = pipes.filter(p => p.x + PIPE_W > -20);
     for (const p of pipes) {
-      p.x -= PIPE_SPD;
+      p.x -= dynSpd;
       if (!p.scored && p.x + PIPE_W < fox.x) {
         p.scored = true;
         score++;
@@ -511,7 +591,7 @@ function loop() {
   }
 
   // Draw pipes
-  for (const p of pipes) drawPipe(p.x, p.top, p.idx);
+  for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
 
   // Draw fox
   drawFox(fox.x, fox.y, fox.vy);

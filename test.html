@@ -32,6 +32,7 @@
     font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
+    padding-right: 100px;
   }
   #scoreBoard span { color: #fff; font-size: 20px; }
   #canvas {
@@ -49,7 +50,7 @@
     display: flex;
     gap: 8px;
     position: absolute;
-    top: -44px;
+    top: 0;
     right: 0;
   }
   .langBtn {
@@ -73,13 +74,13 @@
 <body>
 <div id="gameWrapper">
   <div style="position:relative;width:360px;">
-    <div id="langBar">
-      <button class="langBtn active" id="btnJa" onclick="setLang('ja')">🇯🇵 JA</button>
-      <button class="langBtn" id="btnEn" onclick="setLang('en')">🇬🇧 EN</button>
-    </div>
     <div id="scoreBoard">
       <span id="labelScore">スコア</span> <span id="score">0</span>
       &nbsp;&nbsp;<span id="labelBest">最高</span> <span id="best">0</span>
+    </div>
+    <div id="langBar">
+      <button class="langBtn active" id="btnJa" onclick="setLang('ja')">🇯🇵 JA</button>
+      <button class="langBtn" id="btnEn" onclick="setLang('en')">🇬🇧 EN</button>
     </div>
   </div>
   <canvas id="canvas" width="360" height="560"></canvas>

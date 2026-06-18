@@ -128,6 +128,14 @@ function setLang(lang) {
   document.getElementById('labelScore').textContent = T[lang].score;
   document.getElementById('labelBest').textContent = T[lang].best;
   document.getElementById('hint').textContent = T[lang].hint;
+  // Force canvas overlay redraw for idle/dead states
+  if (state === 'idle' || state === 'dead') {
+    drawBg();
+    for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
+    drawFox(fox.x, fox.y, fox.vy);
+    if (state === 'idle') drawIdle();
+    if (state === 'dead') drawDead();
+  }
 }
 function t(key) { return T[LANG][key]; }
 
@@ -547,9 +555,10 @@ function loop() {
 
     // Pipes (難易度：最初5本はゆっくり、その後徐々に加速)
     const pipeCount = pipes.length + pipes.filter(p => p.scored).length;
-    const dynInterval = score < 3 ? 200 : score < 5 ? 170 : score < 8 ? 150 : PIPE_INT;
-    const dynGap = score < 3 ? 270 : score < 5 ? 255 : score < 8 ? 240 : PIPE_GAP;
-    const dynSpd = score < 3 ? 1.2 : score < 5 ? 1.4 : score < 8 ? 1.5 : PIPE_SPD;
+    const pipeTotal = pipes.length;
+    const dynInterval = pipeTotal < 1 ? 160 : score < 3 ? 190 : score < 5 ? 170 : score < 8 ? 150 : PIPE_INT;
+    const dynGap = pipeTotal < 1 ? 250 : score < 3 ? 270 : score < 5 ? 255 : score < 8 ? 240 : PIPE_GAP;
+    const dynSpd = pipeTotal < 1 ? 1.3 : score < 3 ? 1.2 : score < 5 ? 1.4 : score < 8 ? 1.5 : PIPE_SPD;
     pipeTimer++;
     if (pipeTimer >= dynInterval) {
       pipeTimer = 0;

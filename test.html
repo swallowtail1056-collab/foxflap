@@ -143,10 +143,10 @@ const JUMP_V   = -7;
 // Pipes
 let pipes = [];
 const PIPE_W    = 48;
-const PIPE_GAP  = 190;
-const PIPE_SPD  = 2.0;
+const PIPE_GAP  = 230;
+const PIPE_SPD  = 1.6;
 let pipeTimer   = 0;
-const PIPE_INT  = 115;  // frames between pipes
+const PIPE_INT  = 135;  // frames between pipes
 
 // Ground
 const GROUND_H  = 60;
@@ -326,8 +326,9 @@ function drawFox(x, y, vy) {
 
 // ── Obstacle drawing (trees + brick walls) ────────
 // Each pipe alternates: even index = tree, odd index = brick wall
-function drawPipe(px, topH, idx) {
-  const botY = topH + PIPE_GAP;
+function drawPipe(px, topH, idx, gap) {
+  gap = gap || PIPE_GAP;
+  const botY = topH + gap;
   const type = idx % 2 === 0 ? 'tree' : 'brick';
 
   if (type === 'tree') {
@@ -518,7 +519,7 @@ function collides() {
   if (fy + fr >= GY || fy - fr <= 0) return true;
   for (const p of pipes) {
     if (fx + fr > p.x && fx - fr < p.x + PIPE_W) {
-      if (fy - fr < p.top || fy + fr > p.top + PIPE_GAP) return true;
+      if (fy - fr < p.top || fy + fr > p.top + (p.gap || PIPE_GAP)) return true;
     }
   }
   return false;
@@ -544,16 +545,20 @@ function loop() {
     fox.vy += GRAVITY;
     fox.y  += fox.vy;
 
-    // Pipes
+    // Pipes (難易度：最初5本はゆっくり、その後徐々に加速)
+    const pipeCount = pipes.length + pipes.filter(p => p.scored).length;
+    const dynInterval = score < 3 ? 200 : score < 5 ? 170 : score < 8 ? 150 : PIPE_INT;
+    const dynGap = score < 3 ? 270 : score < 5 ? 255 : score < 8 ? 240 : PIPE_GAP;
+    const dynSpd = score < 3 ? 1.2 : score < 5 ? 1.4 : score < 8 ? 1.5 : PIPE_SPD;
     pipeTimer++;
-    if (pipeTimer >= PIPE_INT) {
+    if (pipeTimer >= dynInterval) {
       pipeTimer = 0;
-      const top = 80 + Math.random() * (GY - PIPE_GAP - 120);
-      pipes.push({ x: W + 10, top, scored: false, idx: pipes.length });
+      const top = 80 + Math.random() * (GY - dynGap - 120);
+      pipes.push({ x: W + 10, top, scored: false, idx: pipes.length, gap: dynGap });
     }
     pipes = pipes.filter(p => p.x + PIPE_W > -20);
     for (const p of pipes) {
-      p.x -= PIPE_SPD;
+      p.x -= dynSpd;
       if (!p.scored && p.x + PIPE_W < fox.x) {
         p.scored = true;
         score++;
@@ -574,7 +579,7 @@ function loop() {
   }
 
   // Draw pipes
-  for (const p of pipes) drawPipe(p.x, p.top, p.idx);
+  for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
 
   // Draw fox
   drawFox(fox.x, fox.y, fox.vy);

@@ -45,13 +45,42 @@
     font-size: 13px;
     letter-spacing: 0.5px;
   }
+  #langBar {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    top: -44px;
+    right: 0;
+  }
+  .langBtn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,215,120,0.4);
+    color: rgba(255,215,120,0.7);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .langBtn.active {
+    background: rgba(255,215,120,0.3);
+    color: #ffd97d;
+    border-color: #ffd97d;
+  }
 </style>
 </head>
 <body>
 <div id="gameWrapper">
-  <div id="scoreBoard">
-    スコア <span id="score">0</span>
-    &nbsp;&nbsp;最高 <span id="best">0</span>
+  <div style="position:relative;width:360px;">
+    <div id="langBar">
+      <button class="langBtn active" id="btnJa" onclick="setLang('ja')">🇯🇵 JA</button>
+      <button class="langBtn" id="btnEn" onclick="setLang('en')">🇬🇧 EN</button>
+    </div>
+    <div id="scoreBoard">
+      <span id="labelScore">スコア</span> <span id="score">0</span>
+      &nbsp;&nbsp;<span id="labelBest">最高</span> <span id="best">0</span>
+    </div>
   </div>
   <canvas id="canvas" width="360" height="560"></canvas>
   <div id="hint">クリック / スペース / タップ でジャンプ</div>
@@ -67,6 +96,40 @@ const SKY_TOP    = '#87ceeb';
 const SKY_BOT    = '#c8e8f0';
 const GROUND_COL = '#6b3d1e';
 const GRASS_COL  = '#3a7d2c';
+
+// ── Language ─────────────────────────────────────
+let LANG = 'ja';
+const T = {
+  ja: {
+    score: 'スコア', best: '最高',
+    hint: 'クリック / スペース / タップ でジャンプ',
+    title: 'Foxy Flap 🦊',
+    start: 'タップしてスタート！',
+    startSub: 'Click / Space / Tap',
+    dead: '💥 やられた！',
+    newRecord: '🎉 新記録！',
+    retry: 'タップして もう一度',
+  },
+  en: {
+    score: 'Score', best: 'Best',
+    hint: 'Click / Space / Tap to jump',
+    title: 'Foxy Flap 🦊',
+    start: 'Tap to Start!',
+    startSub: 'Click / Space / Tap',
+    dead: '💥 Game Over!',
+    newRecord: '🎉 New Record!',
+    retry: 'Tap to Play Again',
+  }
+};
+function setLang(lang) {
+  LANG = lang;
+  document.getElementById('btnJa').classList.toggle('active', lang === 'ja');
+  document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+  document.getElementById('labelScore').textContent = T[lang].score;
+  document.getElementById('labelBest').textContent = T[lang].best;
+  document.getElementById('hint').textContent = T[lang].hint;
+}
+function t(key) { return T[LANG][key]; }
 
 // ── State ─────────────────────────────────────────
 let state = 'idle'; // idle | playing | dead
@@ -405,8 +468,8 @@ function drawIdle() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '16px "Segoe UI", sans-serif';
-  ctx.fillText('タップしてスタート！', W/2, H/2 + 16);
-  ctx.fillText('Click / Space / Tap', W/2, H/2 + 38);
+  ctx.fillText(t('start'), W/2, H/2 + 16);
+  ctx.fillText(t('startSub'), W/2, H/2 + 38);
 }
 
 function drawDead() {
@@ -418,25 +481,25 @@ function drawDead() {
   ctx.fillStyle = '#ff6b6b';
   ctx.font = 'bold 30px "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('💥 やられた！', W/2, H/2 - 45);
+  ctx.fillText(t('dead'), W/2, H/2 - 45);
 
   ctx.fillStyle = '#ffd97d';
   ctx.font = 'bold 22px "Segoe UI", sans-serif';
-  ctx.fillText(`スコア: ${score}`, W/2, H/2 - 8);
+  ctx.fillText(`${t('score')}: ${score}`, W/2, H/2 - 8);
 
   if (score >= best) {
     ctx.fillStyle = '#a8e063';
     ctx.font = 'bold 15px "Segoe UI", sans-serif';
-    ctx.fillText('🎉 新記録！', W/2, H/2 + 18);
+    ctx.fillText(t('newRecord'), W/2, H/2 + 18);
   } else {
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '15px "Segoe UI", sans-serif';
-    ctx.fillText(`最高: ${best}`, W/2, H/2 + 18);
+    ctx.fillText(`${t('best')}: ${best}`, W/2, H/2 + 18);
   }
 
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '15px "Segoe UI", sans-serif';
-  ctx.fillText('タップして もう一度', W/2, H/2 + 50);
+  ctx.fillText(t('retry'), W/2, H/2 + 50);
 }
 
 function drawScore() {

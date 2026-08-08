@@ -1,1 +1,9 @@
 
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.jenny.foxyflap",
+        "sha256_cert_fingerprints": ["E7:76:3D:97:01:9A:E8:92:DB:F2:C9:DC:AD:80:55:C2:3F:A4:0E:C5:C5:21:83:EC:BB:DE:06:16:E6:81:38:81"]
+      }
+    }]

@@ -1,0 +1,37 @@
+{
+  "name": "Foxy Flap",
+  "short_name": "Foxy Flap",
+  "description": "A Flappy Bird-style forest adventure starring Jenny the fox!",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a0a2e",
+  "theme_color": "#1a0a2e",
+  "icons": [
+    {
+      "src": "jenny_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "jenny_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "jenny_icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "jenny_icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

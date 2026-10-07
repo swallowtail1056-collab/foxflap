@@ -602,7 +602,7 @@ function loop() {
       }
     }
 
-    if (collides()) {
+   if (collides()) {
       state = 'dead';
       stopBGM();
       if (score > best) {
@@ -610,8 +610,10 @@ function loop() {
         document.getElementById('best').textContent = best;
       }
       playDie();
+
+      // ゲームオーバー時にテスト広告を呼び出す
+      showTestInterstitialAd();
     }
-  }
 
   // Draw pipes
   for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);

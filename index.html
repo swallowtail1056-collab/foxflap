@@ -233,22 +233,27 @@ function playDie() {
   } catch(e) {}
 }
 
-// ── BGM (森のほのぼのメロディ) ────────────────────
+// ── BGM (ポップで明るいゲームメロディ) ────────────────────
 let bgmNodes = [];
 let bgmPlaying = false;
 
+// Cメジャーの明るいポップメロディ (周波数, 長さ秒)
 const MELODY = [
-  [392,0.4],[440,0.4],[494,0.4],[523,0.8],
-  [494,0.4],[440,0.4],[392,0.8],
-  [349,0.4],[392,0.4],[440,0.4],[494,0.8],
-  [440,0.4],[392,0.4],[349,0.8],
-  [392,0.4],[494,0.4],[523,0.4],[587,0.8],
-  [523,0.4],[494,0.4],[440,0.8],
-  [392,0.4],[440,0.4],[494,0.4],[523,0.4],[494,0.4],[440,0.4],
-  [392,1.2]
+  [523.25, 0.15], [659.25, 0.15], [783.99, 0.15], [1046.50, 0.3],
+  [880.00, 0.15], [1046.50, 0.45],
+  [698.46, 0.15], [880.00, 0.15], [1046.50, 0.15], [1318.51, 0.3],
+  [1174.66, 0.15], [987.77, 0.45],
+  [523.25, 0.15], [659.25, 0.15], [783.99, 0.15], [1046.50, 0.3],
+  [1174.66, 0.15], [1318.51, 0.3], [1046.50, 0.15],
+  [880.00, 0.15], [987.77, 0.15], [1046.50, 0.6]
 ];
+
+// アップテンポなポップコード (C - F - G - C)
 const CHORDS = [
-  [196,247,294],[164,196,247],[130,164,196],[146,184,220]
+  [261.63, 329.63, 392.00], // C
+  [349.23, 440.00, 523.25], // F
+  [392.00, 493.88, 587.33], // G
+  [261.63, 329.63, 392.00]  // C
 ];
 
 function startBGM() {
@@ -264,63 +269,50 @@ function scheduleBGM(ac) {
   if (!bgmPlaying) return;
   let t = ac.currentTime + 0.05;
   const master = ac.createGain();
-  master.gain.value = 0.18;
+  master.gain.value = 0.12; // 音量調整
   master.connect(ac.destination);
 
+  // 主旋律（ピコピコ感のあるSquare波）
   MELODY.forEach(([freq, dur]) => {
     const o = ac.createOscillator();
     const g = ac.createGain();
-    o.type = 'sine';
-    o.frequency.value = freq * 2;
+    o.type = 'square';
+    o.frequency.value = freq;
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.6, t + 0.04);
-    g.gain.setValueAtTime(0.6, t + dur - 0.08);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.02);
+    g.gain.setValueAtTime(0.3, t + dur - 0.03);
     g.gain.linearRampToValueAtTime(0, t + dur);
     o.connect(g); g.connect(master);
-    o.start(t); o.stop(t + dur + 0.05);
+    o.start(t); o.stop(t + dur + 0.02);
     bgmNodes.push(o);
     t += dur;
   });
 
-  const chordDur = 1.6;
+  // ベース伴奏（軽快なTriangle波）
+  const chordDur = 0.9;
   let ct = ac.currentTime + 0.05;
-  const totalBars = 8;
+  const totalBars = 4;
   for (let bar = 0; bar < totalBars; bar++) {
     const chord = CHORDS[bar % CHORDS.length];
     chord.forEach(freq => {
       const o = ac.createOscillator();
       const g = ac.createGain();
       o.type = 'triangle';
-      o.frequency.value = freq;
+      o.frequency.value = freq * 0.5; // 低音域
       g.gain.setValueAtTime(0, ct);
-      g.gain.linearRampToValueAtTime(0.25, ct + 0.1);
-      g.gain.setValueAtTime(0.2, ct + chordDur - 0.2);
+      g.gain.linearRampToValueAtTime(0.2, ct + 0.05);
+      g.gain.setValueAtTime(0.15, ct + chordDur - 0.1);
       g.gain.linearRampToValueAtTime(0, ct + chordDur);
       o.connect(g); g.connect(master);
-      o.start(ct); o.stop(ct + chordDur + 0.05);
+      o.start(ct); o.stop(ct + chordDur + 0.02);
       bgmNodes.push(o);
     });
     ct += chordDur;
   }
 
-  for (let i = 0; i < 4; i++) {
-    const bt = ac.currentTime + 1 + Math.random() * 6;
-    [0, 0.12, 0.24].forEach(d => {
-      const o = ac.createOscillator();
-      const g = ac.createGain();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(1200 + Math.random() * 400, bt + d);
-      o.frequency.exponentialRampToValueAtTime(1600 + Math.random() * 300, bt + d + 0.1);
-      g.gain.setValueAtTime(0.12, bt + d);
-      g.gain.exponentialRampToValueAtTime(0.001, bt + d + 0.12);
-      o.connect(g); g.connect(master);
-      o.start(bt + d); o.stop(bt + d + 0.15);
-      bgmNodes.push(o);
-    });
-  }
-
+  // ループ再生の計算
   const loopDur = MELODY.reduce((s, [,d]) => s + d, 0);
-  setTimeout(() => scheduleBGM(ac), (loopDur - 0.2) * 1000);
+  setTimeout(() => scheduleBGM(ac), (loopDur - 0.05) * 1000);
 }
 
 function stopBGM() {

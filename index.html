@@ -534,13 +534,18 @@ function restart() {
   startBGM();
 }
 
-// ── Test Ad Display ──────────────────────────────
+// ── Test Ad Display (Android Native Link) ─────────
 function showTestInterstitialAd() {
   try {
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    console.log("テスト広告呼び出し成功");
+    // Androidアプリ（TWA/WebView）側にメッセージを送信
+    if (window.Android && typeof window.Android.showAd === 'function') {
+      window.Android.showAd();
+      console.log("Androidネイティブへ広告表示を要求しました");
+    } else {
+      console.log("ブラウザ実行中のためネイティブ広告はスキップします");
+    }
   } catch (e) {
-    console.error("テスト広告エラー:", e);
+    console.error("広告呼び出しエラー:", e);
   }
 }
 

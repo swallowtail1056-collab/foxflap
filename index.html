@@ -560,6 +560,15 @@ function restart() {
   state = 'playing';
   startBGM();
 }
+ // ── Test Ad Display ──────────────────────────────
+function showTestInterstitialAd() {
+  try {
+    (adsbygoogle = window.adsbygoogle || []).push({});
+    console.log("テスト広告呼び出し成功");
+  } catch (e) {
+    console.error("テスト広告エラー:", e);
+  }
+}
 
 // ── Main loop ─────────────────────────────────────
 function loop() {

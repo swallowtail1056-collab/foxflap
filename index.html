@@ -8,12 +8,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-KKPG2SSX');</script>
 <!-- End Google Tag Manager --> 
- <!-- Google Ad Test Script -->
+<!-- Google Ad Test Script -->
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3940256099942544" crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Foxy Flap 🦊</title>
- <link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -145,7 +145,6 @@ function setLang(lang) {
   document.getElementById('labelScore').textContent = T[lang].score;
   document.getElementById('labelBest').textContent = T[lang].best;
   document.getElementById('hint').textContent = T[lang].hint;
-  // Force canvas overlay redraw for idle/dead states
   if (state === 'idle' || state === 'dead') {
     drawBg();
     for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
@@ -238,7 +237,6 @@ function playDie() {
 let bgmNodes = [];
 let bgmPlaying = false;
 
-// ト長調の森っぽいメロディ音符 (周波数, 長さ秒)
 const MELODY = [
   [392,0.4],[440,0.4],[494,0.4],[523,0.8],
   [494,0.4],[440,0.4],[392,0.8],
@@ -249,7 +247,6 @@ const MELODY = [
   [392,0.4],[440,0.4],[494,0.4],[523,0.4],[494,0.4],[440,0.4],
   [392,1.2]
 ];
-// 伴奏コード (G-Em-C-D)
 const CHORDS = [
   [196,247,294],[164,196,247],[130,164,196],[146,184,220]
 ];
@@ -270,12 +267,11 @@ function scheduleBGM(ac) {
   master.gain.value = 0.18;
   master.connect(ac.destination);
 
-  // メロディ（シネウェーブ）
   MELODY.forEach(([freq, dur]) => {
     const o = ac.createOscillator();
     const g = ac.createGain();
     o.type = 'sine';
-    o.frequency.value = freq * 2; // 1オクターブ上
+    o.frequency.value = freq * 2;
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(0.6, t + 0.04);
     g.gain.setValueAtTime(0.6, t + dur - 0.08);
@@ -286,7 +282,6 @@ function scheduleBGM(ac) {
     t += dur;
   });
 
-  // 伴奏（やわらかいトライアングル）
   const chordDur = 1.6;
   let ct = ac.currentTime + 0.05;
   const totalBars = 8;
@@ -308,7 +303,6 @@ function scheduleBGM(ac) {
     ct += chordDur;
   }
 
-  // 鳥のさえずり（ランダム）
   for (let i = 0; i < 4; i++) {
     const bt = ac.currentTime + 1 + Math.random() * 6;
     [0, 0.12, 0.24].forEach(d => {
@@ -325,7 +319,6 @@ function scheduleBGM(ac) {
     });
   }
 
-  // ループ（1曲分の長さ後に再スケジュール）
   const loopDur = MELODY.reduce((s, [,d]) => s + d, 0);
   setTimeout(() => scheduleBGM(ac), (loopDur - 0.2) * 1000);
 }
@@ -336,8 +329,12 @@ function stopBGM() {
   bgmNodes = [];
 }
 
+// ── Images ────────────────────────────────────────
 const jennyImg = new Image();
-jennyImg.src = 'jenny.png';
+jennyImg.src = './jenny.png';
+
+const bgImg = new Image();
+bgImg.src = './bg_forest.png';
 
 function drawFox(x, y, vy) {
   ctx.save();
@@ -349,16 +346,15 @@ function drawFox(x, y, vy) {
   ctx.restore();
 }
 
-// ── Obstacle drawing (trees + brick walls) ────────
-// Each pipe alternates: even index = tree, odd index = brick wall
+// ── Obstacle drawing ──────────────────────────────
 function drawPipe(px, topH, idx, gap) {
   gap = gap || PIPE_GAP;
   const botY = topH + gap;
   const type = idx % 2 === 0 ? 'tree' : 'brick';
 
   if (type === 'tree') {
-    drawTree(px, topH, true);   // hanging from top
-    drawTree(px, botY, false);  // rising from bottom
+    drawTree(px, topH, true);
+    drawTree(px, botY, false);
   } else {
     drawBrick(px, topH, true);
     drawBrick(px, botY, false);
@@ -367,7 +363,6 @@ function drawPipe(px, topH, idx, gap) {
 
 function drawTree(px, endY, fromTop) {
   const tw = PIPE_W;
-  // Trunk
   const tg = ctx.createLinearGradient(px, 0, px + tw, 0);
   tg.addColorStop(0, '#8B5E3C'); tg.addColorStop(0.4, '#a0724a'); tg.addColorStop(1, '#6b3d1e');
   ctx.fillStyle = tg;
@@ -377,11 +372,9 @@ function drawTree(px, endY, fromTop) {
     ctx.fillRect(px + 10, endY + 30, tw - 20, GY - endY - 30);
   }
 
-  // Foliage layers (3 stacked triangles)
   const leafColors = ['#2d6e1a', '#3a8c22', '#4aaa2e'];
   const cx = px + tw / 2;
   if (fromTop) {
-    // Foliage at bottom of top obstacle
     for (let i = 0; i < 3; i++) {
       ctx.fillStyle = leafColors[i];
       ctx.beginPath();
@@ -393,7 +386,6 @@ function drawTree(px, endY, fromTop) {
       ctx.fill();
     }
   } else {
-    // Foliage at top of bottom obstacle
     for (let i = 0; i < 3; i++) {
       ctx.fillStyle = leafColors[i];
       ctx.beginPath();
@@ -411,10 +403,8 @@ function drawBrick(px, endY, fromTop) {
   const tw = PIPE_W;
   const brickH = 14, brickW = 22;
   const drawBricks = (y1, y2) => {
-    // Wall fill
     ctx.fillStyle = '#b5451b';
     ctx.fillRect(px, y1, tw, y2 - y1);
-    // Brick pattern
     for (let row = y1; row < y2; row += brickH) {
       const offset = Math.floor((row - y1) / brickH) % 2 === 0 ? 0 : brickW / 2;
       ctx.strokeStyle = '#7a2e0e';
@@ -422,12 +412,10 @@ function drawBrick(px, endY, fromTop) {
       for (let col = px - offset; col < px + tw; col += brickW) {
         ctx.strokeRect(col, row, brickW, brickH);
       }
-      // Horizontal line
       ctx.beginPath(); ctx.moveTo(px, row); ctx.lineTo(px + tw, row);
       ctx.stroke();
     }
   };
-  // Mossy cap
   const capH = 10;
   if (fromTop) {
     drawBricks(0, endY - capH);
@@ -441,30 +429,23 @@ function drawBrick(px, endY, fromTop) {
 }
 
 // ── Background ────────────────────────────────────
-const bgImg = new Image();
-bgImg.src = 'bg_forest.png';
 let bgOff = 0;
 let groundOff = 0;
 
 function drawBg() {
-  // Scrolling forest background image (2x width for seamless loop)
   const spd = state === 'playing' ? PIPE_SPD * 0.4 : 0;
   bgOff = (bgOff + spd) % 720;
-  // Draw twice side by side for seamless scroll
   if (bgImg.complete && bgImg.naturalWidth > 0) {
     ctx.drawImage(bgImg, -bgOff, 0, 720, GY);
     ctx.drawImage(bgImg, 720 - bgOff, 0, 720, GY);
   } else {
-    // Fallback solid color while image loads
     ctx.fillStyle = '#2d6e1a';
     ctx.fillRect(0, 0, W, GY);
   }
 
-  // Ground (earth strip at bottom)
   ctx.fillStyle = '#5a8a1a';
   ctx.fillRect(0, GY, W, GROUND_H);
 
-  // Long grass blades (scrolling)
   groundOff = (groundOff + (state === 'playing' ? PIPE_SPD : 0)) % 18;
   const grassHeights = [32, 22, 40, 26, 36, 20, 30, 38, 28, 34, 22, 42, 24, 36];
   for (let gx = -groundOff - 18; gx < W + 18; gx += 6) {
@@ -560,7 +541,8 @@ function restart() {
   state = 'playing';
   startBGM();
 }
- // ── Test Ad Display ──────────────────────────────
+
+// ── Test Ad Display ──────────────────────────────
 function showTestInterstitialAd() {
   try {
     (adsbygoogle = window.adsbygoogle || []).push({});
@@ -575,12 +557,9 @@ function loop() {
   drawBg();
 
   if (state === 'playing') {
-    // Physics
     fox.vy += GRAVITY;
     fox.y  += fox.vy;
 
-    // Pipes (難易度：最初5本はゆっくり、その後徐々に加速)
-    const pipeCount = pipes.length + pipes.filter(p => p.scored).length;
     const pipeTotal = pipes.length;
     const dynInterval = pipeTotal < 1 ? 160 : score < 3 ? 190 : score < 5 ? 170 : score < 8 ? 150 : PIPE_INT;
     const dynGap = pipeTotal < 1 ? 220 : score < 3 ? 240 : score < 5 ? 225 : score < 8 ? 210 : PIPE_GAP;
@@ -602,7 +581,7 @@ function loop() {
       }
     }
 
-   if (collides()) {
+    if (collides()) {
       state = 'dead';
       stopBGM();
       if (score > best) {
@@ -614,6 +593,7 @@ function loop() {
       // ゲームオーバー時にテスト広告を呼び出す
       showTestInterstitialAd();
     }
+  }
 
   // Draw pipes
   for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
@@ -630,7 +610,8 @@ function loop() {
 }
 
 loop();
- if ('serviceWorker' in navigator) {
+
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });

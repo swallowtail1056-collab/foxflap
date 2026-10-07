@@ -321,12 +321,13 @@ function stopBGM() {
   bgmNodes = [];
 }
 
-// ── Images ────────────────────────────────────────
+// ── Images (キャッシュ強制破棄クエリ付き) ──────────────
+const v = Date.now(); // 毎回新しいタイムスタンプで読み込む
 const jennyImg = new Image();
-jennyImg.src = './jenny.png?v=2';
+jennyImg.src = './jenny.png?v=' + v;
 
 const bgImg = new Image();
-bgImg.src = './bg_forest.png?v=2';
+bgImg.src = './bg_forest.png?v=' + v;
 
 function drawFox(x, y, vy) {
   ctx.save();
@@ -537,7 +538,6 @@ function restart() {
 // ── Test Ad Display (Android Native Link) ─────────
 function showTestInterstitialAd() {
   try {
-    // Androidアプリ（TWA/WebView）側にメッセージを送信
     if (window.Android && typeof window.Android.showAd === 'function') {
       window.Android.showAd();
       console.log("Androidネイティブへ広告表示を要求しました");
@@ -608,9 +608,12 @@ function loop() {
 
 loop();
 
+// ── Service Workerキャッシュの即時強制破棄 ──────────
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
   });
 }
 </script>

@@ -175,10 +175,18 @@ const GROUND_H  = 60;
 const GY        = H - GROUND_H;
 
 // ── Input ─────────────────────────────────────────
+let deadAt = 0;
+const DEAD_LOCK_MS = 900; // やられた直後のタップは無視（連打で広告を誤タップしないように）
+
 function jump() {
+  if (state === 'dead') {
+    if (performance.now() - deadAt < DEAD_LOCK_MS) return;
+    // 「もう一度」のタップで広告を出す（出たときはスタート画面に戻して待つ）
+    if (requestAd()) { resetToIdle(); } else { restart(); }
+    return;
+  }
   if (state === 'idle') { state = 'playing'; startBGM(); }
   if (state === 'playing') { fox.vy = JUMP_V; playFlap(); }
-  if (state === 'dead') { restart(); }
 }
 canvas.addEventListener('click', jump);
 document.addEventListener('keydown', e => {
@@ -231,7 +239,7 @@ function playDie() {
   } catch(e) {}
 }
 
-// ── BGM (落ち着いたソフトなアコースティック調) ───────────────────
+// ── BGM (明るいゲーム風) ───────────────────
 // 二重再生（輪唱）防止：
 //  ・止めるときは、予約済みの音もまとめて消す（音量0にして切り離す）
 //  ・次の周回は、前の周回が終わる時刻ちょうどに予約する（タイマーのずれで重ならない）
@@ -242,14 +250,41 @@ let bgmMaster = null;
 let bgmGen = 0;
 let bgmNext = 0;
 
-// 低めの柔らかい音階 (周波数Hz, 長さ秒) - 三角波(triangle)で温かみのある音
-const CALM_MELODY = [
-  [329.63, 0.4], [392.00, 0.4], [440.00, 0.4], [523.25, 0.8],
-  [440.00, 0.4], [392.00, 0.8],
-  [329.63, 0.4], [293.66, 0.4], [261.63, 0.8],
-  [293.66, 0.4], [329.63, 0.8]
+// 明るいマーチ風BGM（オリジナル曲）116BPM・Cメジャー
+// 音名→周波数
+const NOTE = {
+  C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
+  C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
+  C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
+  C6:1046.50, D6:1174.66
+};
+const STEP = 60 / 116 / 4; // 16分音符の長さ（秒）
+// メロディ [音名, 16分音符いくつ分]（'-' は休み）
+const MELODY = [
+  ['G4',3], ['A4',1], ['B4',2], ['C5',2], ['D5',2], ['E5',2],
+  ['D5',2], ['-',2], ['E5',3], ['F5',1], ['G5',2], ['E5',2],
+  ['C5',4], ['-',4], ['F5',3], ['E5',1], ['D5',2], ['C5',2],
+  ['B4',2], ['C5',2], ['D5',2], ['G4',2], ['C5',2], ['E5',2],
+  ['D5',2], ['B4',2], ['C5',4], ['G4',2], ['-',2], ['E5',2],
+  ['E5',1], ['E5',1], ['G5',2], ['E5',2], ['D5',2], ['D5',1],
+  ['D5',1], ['F5',2], ['D5',2], ['C5',2], ['E5',2], ['G5',2],
+  ['C6',2], ['B5',2], ['A5',2], ['G5',4], ['A5',3], ['G5',1],
+  ['F5',2], ['E5',2], ['D5',2], ['E5',2], ['F5',2], ['D5',2],
+  ['G5',2], ['E5',2], ['D5',2], ['B4',2], ['C5',2], ['G4',2],
+  ['C5',2], ['-',2]
 ];
-const CALM_LEN = CALM_MELODY.reduce((s, [, d]) => s + d, 0);
+// ベース「ブン・チャ・ブン・チャ」（8分音符ずつ）
+const BASS = [
+  'C3', 'E4', 'G3', 'E4', 'G3', 'B3', 'D3', 'B3',
+  'C3', 'E4', 'G3', 'E4', 'C3', 'E4', 'G3', 'E4',
+  'F3', 'A3', 'C3', 'A3', 'G3', 'B3', 'D3', 'B3',
+  'C3', 'E4', 'G3', 'E4', 'C3', 'E4', 'G3', 'E4',
+  'C3', 'E4', 'G3', 'E4', 'G3', 'B3', 'D3', 'B3',
+  'C3', 'E4', 'G3', 'E4', 'G3', 'B3', 'D3', 'B3',
+  'F3', 'A3', 'C3', 'A3', 'G3', 'B3', 'D3', 'B3',
+  'G3', 'B3', 'D3', 'B3', 'C3', 'E4', 'G3', 'E4'
+];
+const LOOP_LEN = MELODY.reduce((s, [, d]) => s + d, 0) * STEP;
 
 function startBGM() {
   stopBGM();
@@ -259,36 +294,45 @@ function startBGM() {
     bgmPlaying = true;
     const gen = ++bgmGen;
     bgmMaster = ac.createGain();
-    bgmMaster.gain.value = 0.5; // スマホのスピーカーでも聞こえる音量（以前は0.06で小さすぎた）
+    bgmMaster.gain.value = 0.5; // 全体の音量
     bgmMaster.connect(ac.destination);
     bgmNext = ac.currentTime + 0.05;
-    scheduleCalmLoop(ac, gen);
+    scheduleLoop(ac, gen);
   } catch(e) {}
 }
 
-function scheduleCalmLoop(ac, gen) {
+function playTone(ac, type, freq, t, dur, vol, cut) {
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  const len = dur * (cut || 0.75); // 短く切って跳ねる感じに
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.01);
+  g.gain.setValueAtTime(vol, t + len - 0.03);
+  g.gain.linearRampToValueAtTime(0, t + len);
+  o.connect(g); g.connect(bgmMaster);
+  o.start(t); o.stop(t + len + 0.02);
+}
+
+function scheduleLoop(ac, gen) {
   if (!bgmPlaying || gen !== bgmGen || !bgmMaster) return;
-  // 遅れすぎていたら今から始め直す（途中の音を詰め込まない）
   if (bgmNext < ac.currentTime) bgmNext = ac.currentTime + 0.05;
-  let t = bgmNext;
-  CALM_MELODY.forEach(([freq, dur]) => {
-    const o = ac.createOscillator();
-    const g = ac.createGain();
-    o.type = 'triangle'; // 刺さらない丸い音色
-    o.frequency.value = freq * 2; // 1オクターブ上げる（スマホの小さなスピーカーは低い音が出にくいため）
-    // なめらかなエンベロープ（耳障りなクリック音を防止）
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.18, t + 0.08);
-    g.gain.setValueAtTime(0.15, t + dur - 0.1);
-    g.gain.linearRampToValueAtTime(0, t + dur);
-    o.connect(g); g.connect(bgmMaster);
-    o.start(t); o.stop(t + dur + 0.02);
+  const start = bgmNext;
+  // メロディ（ピコピコした矩形波）
+  let t = start;
+  MELODY.forEach(([n, d]) => {
+    const dur = d * STEP;
+    if (n !== '-') playTone(ac, 'square', NOTE[n], t, dur, 0.09);
     t += dur;
   });
-  bgmNext = t;
-  // 周回が終わる0.3秒前に次の周回を予約
+  // ベース（三角波）ブン（強め）・チャ（弱め）
+  BASS.forEach((n, i) => {
+    if (n !== '-') playTone(ac, 'triangle', NOTE[n], start + i * STEP * 2, STEP * 2, i % 2 === 0 ? 0.35 : 0.22, 0.6);
+  });
+  bgmNext = start + LOOP_LEN;
   const wait = Math.max(0, (bgmNext - ac.currentTime - 0.3) * 1000);
-  bgmTimer = setTimeout(() => scheduleCalmLoop(ac, gen), wait);
+  bgmTimer = setTimeout(() => scheduleLoop(ac, gen), wait);
 }
 
 function stopBGM() {
@@ -521,28 +565,34 @@ function collides() {
 }
 
 // ── Restart ───────────────────────────────────────
-function restart() {
+function resetGame() {
   fox = { x: 80, y: H/2, vy: 0, r: 18 };
   pipes = [];
   pipeTimer = 0;
   score = 0;
   document.getElementById('score').textContent = 0;
+}
+function restart() {
+  resetGame();
   state = 'playing';
   startBGM();
 }
+function resetToIdle() {
+  resetGame();
+  state = 'idle';
+}
 
-// ── Test Ad Display (Android Native Link) ─────────
-function showTestInterstitialAd() {
+// ── 広告（Androidアプリのときだけ） ─────────────────
+// アプリ側が「今回は広告を出す」と判断したら true が返る
+function requestAd() {
   try {
     if (window.Android && typeof window.Android.showAd === 'function') {
-      window.Android.showAd();
-      console.log("Androidネイティブへ広告表示を要求しました");
-    } else {
-      console.log("ブラウザ実行中のためネイティブ広告はスキップします");
+      return window.Android.showAd() === true;
     }
   } catch (e) {
-    console.error("広告呼び出しエラー:", e);
+    console.error('広告呼び出しエラー:', e);
   }
+  return false;
 }
 
 // ── Main loop ─────────────────────────────────────
@@ -582,9 +632,7 @@ function loop() {
         document.getElementById('best').textContent = best;
       }
       playDie();
-
-      // ゲームオーバー時にテスト広告を呼び出す
-      showTestInterstitialAd();
+      deadAt = performance.now();
     }
   }
 

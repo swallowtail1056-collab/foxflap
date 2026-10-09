@@ -8,8 +8,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-KKPG2SSX');</script>
 <!-- End Google Tag Manager --> 
-<!-- Google Ad Test Script -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3940256099942544" crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Foxy Flap 🦊</title>
@@ -234,8 +232,15 @@ function playDie() {
 }
 
 // ── BGM (落ち着いたソフトなアコースティック調) ───────────────────
+// 二重再生（輪唱）防止：
+//  ・止めるときは、予約済みの音もまとめて消す（音量0にして切り離す）
+//  ・次の周回は、前の周回が終わる時刻ちょうどに予約する（タイマーのずれで重ならない）
+//  ・古いタイマーが残っていても、世代番号が違えば何もしない
 let bgmTimer = null;
 let bgmPlaying = false;
+let bgmMaster = null;
+let bgmGen = 0;
+let bgmNext = 0;
 
 // 低めの柔らかい音階 (周波数Hz, 長さ秒) - 三角波(triangle)で温かみのある音
 const CALM_MELODY = [
@@ -244,55 +249,73 @@ const CALM_MELODY = [
   [329.63, 0.4], [293.66, 0.4], [261.63, 0.8],
   [293.66, 0.4], [329.63, 0.8]
 ];
+const CALM_LEN = CALM_MELODY.reduce((s, [, d]) => s + d, 0);
 
 function startBGM() {
-  stopBGM(); // 既存のタイマーや再生を確実に停止（輪唱防止）
-  bgmPlaying = true;
+  stopBGM();
   try {
     const ac = getAudio();
-    playCalmLoop(ac);
+    if (ac.state === 'suspended') ac.resume();
+    bgmPlaying = true;
+    const gen = ++bgmGen;
+    bgmMaster = ac.createGain();
+    bgmMaster.gain.value = 0.5; // スマホのスピーカーでも聞こえる音量（以前は0.06で小さすぎた）
+    bgmMaster.connect(ac.destination);
+    bgmNext = ac.currentTime + 0.05;
+    scheduleCalmLoop(ac, gen);
   } catch(e) {}
 }
 
-function playCalmLoop(ac) {
-  if (!bgmPlaying) return;
-  let t = ac.currentTime + 0.05;
-  const master = ac.createGain();
-  master.gain.value = 0.06; // 全体音量をかなり抑えめに調整
-  master.connect(ac.destination);
-
-  let totalDur = 0;
+function scheduleCalmLoop(ac, gen) {
+  if (!bgmPlaying || gen !== bgmGen || !bgmMaster) return;
+  // 遅れすぎていたら今から始め直す（途中の音を詰め込まない）
+  if (bgmNext < ac.currentTime) bgmNext = ac.currentTime + 0.05;
+  let t = bgmNext;
   CALM_MELODY.forEach(([freq, dur]) => {
     const o = ac.createOscillator();
     const g = ac.createGain();
     o.type = 'triangle'; // 刺さらない丸い音色
-    o.frequency.value = freq;
-    
-    // なめらかなエンベロープ（耳障りなクリック音・セミ鳴き声を防止）
+    o.frequency.value = freq * 2; // 1オクターブ上げる（スマホの小さなスピーカーは低い音が出にくいため）
+    // なめらかなエンベロープ（耳障りなクリック音を防止）
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(0.18, t + 0.08);
     g.gain.setValueAtTime(0.15, t + dur - 0.1);
     g.gain.linearRampToValueAtTime(0, t + dur);
-    
-    o.connect(g); g.connect(master);
+    o.connect(g); g.connect(bgmMaster);
     o.start(t); o.stop(t + dur + 0.02);
     t += dur;
-    totalDur += dur;
   });
-
-  // ループが重複しないよう、タイマー管理を一本化
-  bgmTimer = setTimeout(() => {
-    if (bgmPlaying) playCalmLoop(ac);
-  }, totalDur * 1000);
+  bgmNext = t;
+  // 周回が終わる0.3秒前に次の周回を予約
+  const wait = Math.max(0, (bgmNext - ac.currentTime - 0.3) * 1000);
+  bgmTimer = setTimeout(() => scheduleCalmLoop(ac, gen), wait);
 }
 
 function stopBGM() {
   bgmPlaying = false;
-  if (bgmTimer) {
-    clearTimeout(bgmTimer);
-    bgmTimer = null;
+  bgmGen++;
+  if (bgmTimer) { clearTimeout(bgmTimer); bgmTimer = null; }
+  if (bgmMaster) {
+    const m = bgmMaster;
+    bgmMaster = null;
+    try {
+      const ac = getAudio();
+      m.gain.cancelScheduledValues(ac.currentTime);
+      m.gain.setValueAtTime(m.gain.value, ac.currentTime);
+      m.gain.linearRampToValueAtTime(0, ac.currentTime + 0.05);
+      setTimeout(() => { try { m.disconnect(); } catch(e) {} }, 100);
+    } catch(e) { try { m.disconnect(); } catch(e2) {} }
   }
 }
+
+// アプリを裏に回したらBGMを止め、戻ったら（プレイ中なら）再開
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopBGM();
+  } else if (state === 'playing') {
+    startBGM();
+  }
+});
 
 // ── Images (キャッシュ強制破棄) ────────────────────
 const v = Date.now();

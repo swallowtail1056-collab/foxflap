@@ -54,6 +54,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     cursor: pointer;
     display: block;
   }
+  #shareXBtn {
+    visibility: hidden;
+    background: #000;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 20px;
+    padding: 8px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #shareXBtn:active { opacity: 0.8; }
   #hint {
     color: rgba(255,215,120,0.7);
     font-size: 13px;
@@ -98,6 +110,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
   <canvas id="canvas" width="360" height="560"></canvas>
+  <button id="shareXBtn" type="button">𝕏 スコアを投稿</button>
   <div id="hint">クリック / スペース / タップ でジャンプ</div>
 </div>
 
@@ -124,6 +137,7 @@ const T = {
     dead: '💥 やられた！',
     newRecord: '🎉 新記録！',
     retry: 'タップして もう一度',
+    shareBtn: '𝕏 スコアを投稿',
   },
   en: {
     score: 'Score', best: 'Best',
@@ -134,6 +148,7 @@ const T = {
     dead: '💥 Game Over!',
     newRecord: '🎉 New Record!',
     retry: 'Tap to Play Again',
+    shareBtn: '𝕏 Share Score',
   }
 };
 function setLang(lang) {
@@ -143,6 +158,7 @@ function setLang(lang) {
   document.getElementById('labelScore').textContent = T[lang].score;
   document.getElementById('labelBest').textContent = T[lang].best;
   document.getElementById('hint').textContent = T[lang].hint;
+  document.getElementById('shareXBtn').textContent = T[lang].shareBtn;
   if (state === 'idle' || state === 'dead') {
     drawBg();
     for (const p of pipes) drawPipe(p.x, p.top, p.idx, p.gap || PIPE_GAP);
@@ -527,7 +543,7 @@ function drawDead() {
   ctx.font = 'bold 22px "Segoe UI", sans-serif';
   ctx.fillText(`${t('score')}: ${score}`, W/2, H/2 - 8);
 
-  if (score >= best) {
+  if (lastIsRecord) {
     ctx.fillStyle = '#a8e063';
     ctx.font = 'bold 15px "Segoe UI", sans-serif';
     ctx.fillText(t('newRecord'), W/2, H/2 + 18);
@@ -573,14 +589,39 @@ function resetGame() {
   document.getElementById('score').textContent = 0;
 }
 function restart() {
+  hideShareBtn();
   resetGame();
   state = 'playing';
   startBGM();
 }
 function resetToIdle() {
+  hideShareBtn();
   resetGame();
   state = 'idle';
 }
+
+// ── X（旧Twitter）にスコアを投稿 ─────────────────
+let lastScore = 0, lastIsRecord = false;
+const shareBtnEl = document.getElementById('shareXBtn');
+function showShareBtn() { shareBtnEl.style.visibility = 'visible'; }
+function hideShareBtn() { shareBtnEl.style.visibility = 'hidden'; }
+function shareScoreOnX() {
+  const inApp = !!(window.Android && typeof window.Android.openUrl === 'function');
+  const pageUrl = inApp
+    ? 'https://play.google.com/store/apps/details?id=com.jenny.foxyflap'
+    : 'https://flap.kitsunechess.com/';
+  const text = LANG === 'ja'
+    ? 'Foxy Flapでスコア' + lastScore + 'を達成！🦊' + (lastIsRecord ? '（自己ベスト更新！）' : '') + '\n#foxyflap'
+    : 'I scored ' + lastScore + ' in Foxy Flap! 🦊' + (lastIsRecord ? ' (New personal best!)' : '') + '\n#foxyflap';
+  const url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(pageUrl);
+  try {
+    if (inApp) { window.Android.openUrl(url); return; }
+  } catch (e) {}
+  window.open(url, '_blank', 'noopener');
+}
+// ボタンを押してもゲームが再スタートしないよう、イベントを止める
+['touchstart', 'click'].forEach(ev => shareBtnEl.addEventListener(ev, e => { e.stopPropagation(); }, { passive: true }));
+shareBtnEl.addEventListener('click', () => { shareScoreOnX(); shareBtnEl.blur(); });
 
 // ── 広告（Androidアプリのときだけ） ─────────────────
 // アプリ側が「今回は広告を出す」と判断したら true が返る
@@ -627,6 +668,9 @@ function loop() {
     if (collides()) {
       state = 'dead';
       stopBGM();
+      lastScore = score;
+      lastIsRecord = score > best && score > 0;
+      showShareBtn();
       if (score > best) {
         best = score;
         document.getElementById('best').textContent = best;
